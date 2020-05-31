@@ -79,7 +79,7 @@ class InterfacedDevice:
         raise NotImplementedError
 
     def topic(self):
-        return os.path.join(_config["topicprefix"], self._config["topic"])
+        return os.path.join(_config["topic_prefix"], self._config["topic"])
 
     def status_topic(self):
         return os.path.join(self.topic(), 'status')

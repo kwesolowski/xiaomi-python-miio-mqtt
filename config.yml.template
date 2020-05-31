@@ -1,0 +1,24 @@
+backends:
+  - 'stdout' # print reports to stdout, useful for development / debugging
+  - '<mqtt>://<login>:<password>@<hostname>' # No support / not tested with TLS yet
+
+topic_prefix: 'xiaomi/' # MQTT topic prefix
+simplify: true # Omit properties from reports
+
+minimal_water_depth: 30 # Do not turn on humidifier with debt below that
+
+humidifiers: # All humidifiers, currently AC1
+  - 'topic' : 'humidifier/bedroom' # Topic to use after topic_prefix for this device
+    'ip' : '192.168.0.xx' # IP address of this device
+    'token' : 'yyyyy' # Token for this device
+    'location' : 'bedroom' # Location to be added to the report
+
+  - 'topic' : 'humidifier/living'
+    'ip' : '192.168.0.zz'
+    'token' : 'bbbbb'
+    'location' : 'living'
+
+  - 'topic' : 'humidifier/kids'
+    'ip' : '192.168.0.yy'
+    'token' : 'aaaa'
+    'location' : 'kids'
