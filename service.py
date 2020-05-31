@@ -206,5 +206,5 @@ while True:
         if report != None:
             for b in _all_backends:
                 b.output(d.status_topic(), report)
-    for b in _mqtt_backends:
-        b._client.loop()
+        for b in _mqtt_backends:
+            b._client.loop()
