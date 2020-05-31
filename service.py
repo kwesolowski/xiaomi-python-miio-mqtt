@@ -129,9 +129,9 @@ class InterfacedHumidifier(InterfacedDevice):
     def apply_control(self,
                       last_status : miio.airhumidifier.AirHumidifierStatus,
                       mdev : miio.airhumidifier.AirHumidifierCA1,
-                      control):
-        target_speed = control['speed']
-        print(f"Setting speed: {target_speed}")
+                      control : dict):
+        target_speed = control.get('speed', 0.0)
+        print(f"Setting speed: {target_speed} from {control}")
 
         if target_speed < 0.05:
             if last_status.is_on:
