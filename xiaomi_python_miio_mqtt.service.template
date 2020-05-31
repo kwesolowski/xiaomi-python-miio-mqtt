@@ -1,6 +1,5 @@
-  
 [Unit]
-Description=Xiaomi Mi Flora Plant Sensor MQTT Client/Daemon
+Description=Xiaomi Humidifiers MQTT Client/Daemon
 Documentation=https://github.com/kwesolowski/xiaomi-python-miio-mqtt
 After=network.target mosquitto.service
 
