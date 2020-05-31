@@ -1,0 +1,21 @@
+  
+[Unit]
+Description=Xiaomi Mi Flora Plant Sensor MQTT Client/Daemon
+Documentation=https://github.com/kwesolowski/xiaomi-python-miio-mqtt
+After=network.target mosquitto.service
+
+[Service]
+Type=simple
+User=daemon
+Group=daemon
+WorkingDirectory=/opt/xiaomi-python-miio-mqtt
+ExecStart=/usr/bin/python3 /opt/xiaomi-python-miio-mqtt/service.py
+StandardOutput=null
+#StandardOutput=syslog
+SyslogIdentifier=xiaomi-pmm
+StandardError=journal
+Environment=PYTHONUNBUFFERED=true
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
