@@ -42,7 +42,7 @@ class PahoMqttBackend:
         self._client = client
 
     def output(self, topic: str, value: dict):
-        self._client.publish(topic, json.dumps(value))
+        self._client.publish(topic, json.dumps(value), retain=True)
 
     def subcribe_to_control(self, topic: str, command_handler):
         self._client.message_callback_add(topic, command_handler)
