@@ -131,12 +131,12 @@ class InterfacedHumidifier(InterfacedDevice):
                       mdev : miio.airhumidifier.AirHumidifierCA1,
                       control : dict):
         target_speed = control.get('speed', 0.0)
-        print(f"Setting speed: {target_speed} from {control}")
+        print(f"{self.control_topic()}: setting speed = {target_speed} from {control}")
         try:
             self.set_active_control(target_speed, last_status, mdev)
             self.set_passive_control(last_status, mdev)
         except Exception as e:
-            print("Failed to apply control: ", e, file=sys.stderr)
+            print(f"{self.control_topic()}: failed to apply control: ", e, file=sys.stderr)
 
     def set_active_control(self, target_speed, last_status, mdev):
         if target_speed < 0.05:
@@ -208,3 +208,6 @@ while True:
                 b.output(d.status_topic(), report)
         for b in _mqtt_backends:
             b._client.loop()
+
+    for b in _mqtt_backends:
+            b._client.loop(5)
