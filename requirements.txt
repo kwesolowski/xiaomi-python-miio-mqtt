@@ -1,0 +1,3 @@
+python-miio
+paho-mqtt
+pyyaml
