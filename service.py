@@ -132,7 +132,13 @@ class InterfacedHumidifier(InterfacedDevice):
                       control : dict):
         target_speed = control.get('speed', 0.0)
         print(f"Setting speed: {target_speed} from {control}")
+        try:
+            self.set_active_control(target_speed, last_status, mdev)
+            self.set_passive_control(last_status, mdev)
+        except Exception as e:
+            print("Failed to apply control: ", e, file=sys.stderr)
 
+    def set_active_control(self, target_speed, last_status, mdev):
         if target_speed < 0.05:
             if last_status.is_on:
                 mdev.off()
@@ -154,10 +160,6 @@ class InterfacedHumidifier(InterfacedDevice):
                         mdev.set_mode(miio.airhumidifier.OperationMode.High)
                 else:
                     pass
-
-        self.set_passive_control(last_status, mdev)
-        
-        pass
 
     def set_passive_control(self, last_status, mdev):
         if last_status.child_lock != True:
