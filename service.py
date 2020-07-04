@@ -12,6 +12,7 @@ import os
 import json
 import copy
 import typing
+import datetime
 
 _parser = argparse.ArgumentParser("Bridge python-miio xiaomi device to mqtt")
 _parser.add_argument("--config", default=os.path.join(os.getcwd(), "config.yml"))
@@ -74,6 +75,9 @@ class InterfacedDevice:
     def __init__(self, miio_device, config):
         self._miio_device = miio_device
         self._config = config
+        self._last_succesful_report = datetime.datetime.now(datetime.timezone.utc)
+        self._last_succesful_control = datetime.datetime.now(datetime.timezone.utc)
+        
 
     def get_report(self):
         raise NotImplementedError
@@ -86,6 +90,9 @@ class InterfacedDevice:
 
     def control_topic(self):
         return os.path.join(self.topic(), 'control')
+
+    def error_topic(self):
+        return os.path.join(self.topic(), 'error')
 
     def handle_control(self, client, userdata, message: paho.mqtt.client.MQTTMessage):
         raise NotImplementedError
@@ -106,7 +113,7 @@ class InterfacedHumidifier(InterfacedDevice):
             data['location'] = self._config['location']
             if 'sublocation' in self._config:
                 data['sublocation'] = self._config['sublocation']
-
+            self._last_succesful_report = datetime.datetime.now(datetime.timezone.utc)
             return data
         except (miio.exceptions.DeviceException, OSError) as e:
             print(e, file=sys.stderr)
@@ -135,6 +142,7 @@ class InterfacedHumidifier(InterfacedDevice):
         try:
             self.set_active_control(target_speed, last_status, mdev)
             self.set_passive_control(last_status, mdev)
+            self._last_succesful_control = datetime.datetime.now(datetime.timezone.utc)
         except Exception as e:
             print(f"{self.control_topic()}: failed to apply control: ", e, file=sys.stderr)
 
@@ -201,6 +209,17 @@ prepare_devices(_interfaced_devices,
                 _config["humidifiers"])
 
 while True:
+    now = datetime.datetime.now(datetime.timezone.utc)
+    for d in _interfaced_devices:
+        if now - d._last_succesful_report > datetime.timedelta(minutes=15):
+            for b in _all_backends:
+                b.output(d.error_topic(), "Missing report for 30 minutes")
+                b._client.loop()
+        if now - d._last_succesful_control > datetime.timedelta(minutes=15):
+            for b in _all_backends:
+                b.output(d.error_topic(), "Failed to control for 30 minutes")
+                b._client.loop()
+        
     for d in _interfaced_devices:
         report = d.get_report()
         if report != None:
