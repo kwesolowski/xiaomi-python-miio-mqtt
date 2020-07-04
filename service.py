@@ -20,6 +20,9 @@ _args = _parser.parse_args()
 
 _config = yaml.safe_load(open(_args.config, "rb").read())
 
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 if _config["simplify"]:
 
     def simplify_dict(obj, prop: str):
@@ -116,7 +119,7 @@ class InterfacedHumidifier(InterfacedDevice):
             self._last_succesful_report = datetime.datetime.now(datetime.timezone.utc)
             return data
         except (miio.exceptions.DeviceException, OSError) as e:
-            print(e, file=sys.stderr)
+            eprint(e)
             return None
 
     def get_humidifier_report(self, status):
@@ -144,7 +147,7 @@ class InterfacedHumidifier(InterfacedDevice):
             self.set_passive_control(last_status, mdev)
             self._last_succesful_control = datetime.datetime.now(datetime.timezone.utc)
         except Exception as e:
-            print(f"{self.control_topic()}: failed to apply control: ", e, file=sys.stderr)
+            eprint(f"{self.control_topic()}: failed to apply control: ", e)
 
     def set_active_control(self, target_speed, last_status, mdev):
         if target_speed < 0.05:
@@ -192,7 +195,7 @@ class InterfacedHumidifier(InterfacedDevice):
         try:
             self.apply_control(self._last_status, self._miio_device, json.loads(message.payload))
         except miio.exceptions.DeviceError as e:
-            print(e)
+            eprint(e)
 
 _interfaced_devices = []
 
