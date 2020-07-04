@@ -241,6 +241,8 @@ prepare_devices(_interfaced_devices, _config["humidifiers"])
 def send_output(topic: str, data):
     for b in _all_backends:
         b.output(topic, data)
+
+    for b in _mqtt_backends:
         b._client.loop()
 
 
