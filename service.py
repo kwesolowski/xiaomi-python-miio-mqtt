@@ -237,29 +237,27 @@ def prepare_devices(device_list, humidifiers_config):
 
 prepare_devices(_interfaced_devices, _config["humidifiers"])
 
+
+def send_output(topic: str, data):
+    for b in _all_backends:
+        b.output(topic, data)
+        b._client.loop()
+
+
 while True:
     now = datetime.datetime.now(datetime.timezone.utc)
     for d in _interfaced_devices:
         if now - d._last_succesful_report > datetime.timedelta(minutes=15):
-            for b in _all_backends:
-                b.output(d.error_topic(), "Missing report for 30 minutes")
-                b._client.loop()
+            send_output(d.error_topic(), "Missing report for 30 minutes")
         if now - d._last_succesful_control > datetime.timedelta(minutes=15):
-            for b in _all_backends:
-                b.output(d.error_topic(), "Failed to control for 30 minutes")
-                b._client.loop()
+            send_output(d.error_topic(), "Failed to control for 30 minutes")
         if d is InterfacedHumidifier and d.is_tank_empty():
-            for b in _all_backends:
-                b.output(d.error_topic(), "Water Tank is empty")
-                b._client.loop()
+            send_output(d.error_topic(), "Water Tank is empty")
 
     for d in _interfaced_devices:
         report = d.get_report()
         if report != None:
-            for b in _all_backends:
-                b.output(d.status_topic(), report)
-        for b in _mqtt_backends:
-            b._client.loop()
+            send_output(d.status_topic(), report)
 
     for b in _mqtt_backends:
-        b._client.loop(5)
+        b._client.loop(1)
