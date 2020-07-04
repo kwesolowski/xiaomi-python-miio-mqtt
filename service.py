@@ -20,8 +20,10 @@ _args = _parser.parse_args()
 
 _config = yaml.safe_load(open(_args.config, "rb").read())
 
+
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
+
 
 if _config["simplify"]:
 
@@ -52,10 +54,14 @@ class PahoMqttBackend:
         self._client.message_callback_add(topic, command_handler)
         self._client.subscribe(topic)
 
-_all_backends = []
-_mqtt_backends = [] # typing.List[PahoMqttBackend]
 
-def prepare_backends(all_backends, mqtt_backends : typing.List[PahoMqttBackend], backends_config):
+_all_backends = []
+_mqtt_backends = []  # typing.List[PahoMqttBackend]
+
+
+def prepare_backends(
+    all_backends, mqtt_backends: typing.List[PahoMqttBackend], backends_config
+):
     for b in backends_config:
         if b == "stdout":
             print("Adding stdout backend")
@@ -72,7 +78,9 @@ def prepare_backends(all_backends, mqtt_backends : typing.List[PahoMqttBackend],
             all_backends.append(mqtt_backend)
             mqtt_backends.append(mqtt_backend)
 
+
 prepare_backends(_all_backends, _mqtt_backends, _config["backends"])
+
 
 class InterfacedDevice:
     def __init__(self, miio_device, config):
@@ -80,7 +88,6 @@ class InterfacedDevice:
         self._config = config
         self._last_succesful_report = datetime.datetime.now(datetime.timezone.utc)
         self._last_succesful_control = datetime.datetime.now(datetime.timezone.utc)
-        
 
     def get_report(self):
         raise NotImplementedError
@@ -89,33 +96,33 @@ class InterfacedDevice:
         return os.path.join(_config["topic_prefix"], self._config["topic"])
 
     def status_topic(self):
-        return os.path.join(self.topic(), 'status')
+        return os.path.join(self.topic(), "status")
 
     def control_topic(self):
-        return os.path.join(self.topic(), 'control')
+        return os.path.join(self.topic(), "control")
 
     def error_topic(self):
-        return os.path.join(self.topic(), 'error')
+        return os.path.join(self.topic(), "error")
 
     def handle_control(self, client, userdata, message: paho.mqtt.client.MQTTMessage):
         raise NotImplementedError
+
 
 class InterfacedHumidifier(InterfacedDevice):
     def __init__(self, *args, **kwargs):
         super(InterfacedHumidifier, self).__init__(*args, **kwargs)
         self._last_status = None
 
-    
     def get_report(self):
         try:
-            status : miio.airhumidifier.AirHumidifierStatus = self._miio_device.status()
+            status: miio.airhumidifier.AirHumidifierStatus = self._miio_device.status()
 
             self._last_status = status
 
             data = self.get_humidifier_report(status)
-            data['location'] = self._config['location']
-            if 'sublocation' in self._config:
-                data['sublocation'] = self._config['sublocation']
+            data["location"] = self._config["location"]
+            if "sublocation" in self._config:
+                data["sublocation"] = self._config["sublocation"]
             self._last_succesful_report = datetime.datetime.now(datetime.timezone.utc)
             return data
         except (miio.exceptions.DeviceException, OSError) as e:
@@ -136,10 +143,8 @@ class InterfacedHumidifier(InterfacedDevice):
         simplify_dict(data, "dry")
         return data
 
-    def apply_control(self,
-                      mdev : miio.airhumidifier.AirHumidifierCA1,
-                      control : dict):
-        target_speed = control.get('speed', 0.0)
+    def apply_control(self, mdev: miio.airhumidifier.AirHumidifierCA1, control: dict):
+        target_speed = control.get("speed", 0.0)
         print(f"{self.control_topic()}: setting speed = {target_speed} from {control}")
         try:
             self.set_active_control(target_speed, mdev)
@@ -150,7 +155,7 @@ class InterfacedHumidifier(InterfacedDevice):
 
     def is_tank_empty(self):
         if self._last_status is not None:
-            return self._last_status.depth < _config['minimal_water_depth']
+            return self._last_status.depth < _config["minimal_water_depth"]
         else:
             return False
 
@@ -166,13 +171,22 @@ class InterfacedHumidifier(InterfacedDevice):
                 if not self._last_status.is_on:
                     mdev.on()
                 if target_speed < 0.33:
-                    if not self._last_status.mode == miio.airhumidifier.OperationMode.Silent:
+                    if (
+                        not self._last_status.mode
+                        == miio.airhumidifier.OperationMode.Silent
+                    ):
                         mdev.set_mode(miio.airhumidifier.OperationMode.Silent)
                 elif target_speed < 0.66:
-                    if not self._last_status.mode == miio.airhumidifier.OperationMode.Medium:
+                    if (
+                        not self._last_status.mode
+                        == miio.airhumidifier.OperationMode.Medium
+                    ):
                         mdev.set_mode(miio.airhumidifier.OperationMode.Medium)
                 elif target_speed < 1.01:
-                    if not self._last_status.mode == miio.airhumidifier.OperationMode.High:
+                    if (
+                        not self._last_status.mode
+                        == miio.airhumidifier.OperationMode.High
+                    ):
                         mdev.set_mode(miio.airhumidifier.OperationMode.High)
                 else:
                     pass
@@ -181,7 +195,10 @@ class InterfacedHumidifier(InterfacedDevice):
         if self._last_status.child_lock != True:
             mdev.set_child_lock(True)
 
-        if self._last_status.led_brightness is not None and self._last_status.led_brightness != miio.airhumidifier.LedBrightness.Dim:
+        if (
+            self._last_status.led_brightness is not None
+            and self._last_status.led_brightness != miio.airhumidifier.LedBrightness.Dim
+        ):
             mdev.set_led_brightness(miio.airhumidifier.LedBrightness.Dim)
 
         if self._last_status.target_humidity != 80:
@@ -202,19 +219,23 @@ class InterfacedHumidifier(InterfacedDevice):
         except miio.exceptions.DeviceError as e:
             eprint(e)
 
+
 _interfaced_devices = []
+
 
 def prepare_devices(device_list, humidifiers_config):
     for cfg in humidifiers_config:
         print(f"Configuring humidifer: {cfg['topic']} from {cfg['ip']}")
-        d = miio.airhumidifier.AirHumidifierCA1(cfg["ip"], cfg["token"], lazy_discover=True)
+        d = miio.airhumidifier.AirHumidifierCA1(
+            cfg["ip"], cfg["token"], lazy_discover=True
+        )
         id = InterfacedHumidifier(d, cfg)
         device_list.append(id)
         for mqtt in _mqtt_backends:
             mqtt.subcribe_to_control(id.control_topic(), id.handle_control)
 
-prepare_devices(_interfaced_devices,
-                _config["humidifiers"])
+
+prepare_devices(_interfaced_devices, _config["humidifiers"])
 
 while True:
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -227,7 +248,11 @@ while True:
             for b in _all_backends:
                 b.output(d.error_topic(), "Failed to control for 30 minutes")
                 b._client.loop()
-        
+        if d is InterfacedHumidifier and d.is_tank_empty():
+            for b in _all_backends:
+                b.output(d.error_topic(), "Water Tank is empty")
+                b._client.loop()
+
     for d in _interfaced_devices:
         report = d.get_report()
         if report != None:
@@ -237,4 +262,5 @@ while True:
             b._client.loop()
 
     for b in _mqtt_backends:
-            b._client.loop(5)
+        b._client.loop(5)
+
