@@ -137,55 +137,60 @@ class InterfacedHumidifier(InterfacedDevice):
         return data
 
     def apply_control(self,
-                      last_status : miio.airhumidifier.AirHumidifierStatus,
                       mdev : miio.airhumidifier.AirHumidifierCA1,
                       control : dict):
         target_speed = control.get('speed', 0.0)
         print(f"{self.control_topic()}: setting speed = {target_speed} from {control}")
         try:
-            self.set_active_control(target_speed, last_status, mdev)
-            self.set_passive_control(last_status, mdev)
+            self.set_active_control(target_speed, mdev)
+            self.set_passive_control(mdev)
             self._last_succesful_control = datetime.datetime.now(datetime.timezone.utc)
         except Exception as e:
             eprint(f"{self.control_topic()}: failed to apply control: ", e)
 
-    def set_active_control(self, target_speed, last_status, mdev):
+    def is_tank_empty(self):
+        if self._last_status is not None:
+            return self._last_status.depth < _config['minimal_water_depth']
+        else:
+            return False
+
+    def set_active_control(self, target_speed, mdev):
         if target_speed < 0.05:
-            if last_status.is_on:
+            if self._last_status.is_on:
                 mdev.off()
         else:
-            if last_status.depth < _config['minimal_water_depth']:
-                if last_status.is_on:
+            if self.is_tank_empty():
+                if self._last_status.is_on:
                     mdev.off()
             else:
-                if not last_status.is_on:
+                if not self._last_status.is_on:
                     mdev.on()
                 if target_speed < 0.33:
-                    if not last_status.mode == miio.airhumidifier.OperationMode.Silent:
+                    if not self._last_status.mode == miio.airhumidifier.OperationMode.Silent:
                         mdev.set_mode(miio.airhumidifier.OperationMode.Silent)
                 elif target_speed < 0.66:
-                    if not last_status.mode == miio.airhumidifier.OperationMode.Medium:
+                    if not self._last_status.mode == miio.airhumidifier.OperationMode.Medium:
                         mdev.set_mode(miio.airhumidifier.OperationMode.Medium)
                 elif target_speed < 1.01:
-                    if not last_status.mode == miio.airhumidifier.OperationMode.High:
+                    if not self._last_status.mode == miio.airhumidifier.OperationMode.High:
                         mdev.set_mode(miio.airhumidifier.OperationMode.High)
                 else:
                     pass
 
-    def set_passive_control(self, last_status, mdev):
-        if last_status.child_lock != True:
+    def set_passive_control(self, mdev):
+        if self._last_status.child_lock != True:
             mdev.set_child_lock(True)
 
-        if last_status.led_brightness is not None and last_status.led_brightness != miio.airhumidifier.LedBrightness.Dim:
+        if self._last_status.led_brightness is not None and self._last_status.led_brightness != miio.airhumidifier.LedBrightness.Dim:
             mdev.set_led_brightness(miio.airhumidifier.LedBrightness.Dim)
 
-        if last_status.target_humidity != 80:
+        if self._last_status.target_humidity != 80:
             mdev.set_target_humidity(80)
 
-        if last_status.buzzer != False:
+        if self._last_status.buzzer != False:
             mdev.set_buzzer(False)
 
-        if last_status.dry != False:
+        if self._last_status.dry != False:
             mdev.set_dry(False)
 
     def handle_control(self, client, userdata, message: paho.mqtt.client.MQTTMessage):
@@ -193,7 +198,7 @@ class InterfacedHumidifier(InterfacedDevice):
             return
 
         try:
-            self.apply_control(self._last_status, self._miio_device, json.loads(message.payload))
+            self.apply_control(self._miio_device, json.loads(message.payload))
         except miio.exceptions.DeviceError as e:
             eprint(e)
 
