@@ -246,6 +246,9 @@ def send_output(topic: str, data):
         b._client.loop()
 
 
+for d in _interfaced_devices:
+  send_output(d.error_topic(), "Deamon startup")  
+
 while True:
     now = datetime.datetime.now(datetime.timezone.utc)
     for d in _interfaced_devices:
