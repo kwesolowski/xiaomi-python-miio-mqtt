@@ -247,15 +247,18 @@ def send_output(topic: str, data):
 
 
 for d in _interfaced_devices:
-  send_output(d.error_topic(), "Deamon startup")  
+    send_output(d.error_topic(), "Deamon startup")
+
+
+communication_time_delta = datetime.timedelta(minutes=_config['communication_error_timout_minutes'])
 
 while True:
     now = datetime.datetime.now(datetime.timezone.utc)
     for d in _interfaced_devices:
-        if now - d._last_succesful_report > datetime.timedelta(minutes=15):
-            send_output(d.error_topic(), "Missing report for 30 minutes")
-        if now - d._last_succesful_control > datetime.timedelta(minutes=15):
-            send_output(d.error_topic(), "Failed to control for 30 minutes")
+        if now - d._last_succesful_report > communication_time_delta:
+            send_output(d.error_topic(), f"Missing report for {communication_time_delta}")
+        if now - d._last_succesful_control > communication_time_delta:
+            send_output(d.error_topic(), f"Failed to control for {communication_time_delta}")
         if d is InterfacedHumidifier and d.is_tank_empty():
             send_output(d.error_topic(), "Water Tank is empty")
 
